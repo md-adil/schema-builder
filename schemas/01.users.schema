@@ -1,0 +1,8 @@
+TABLE users
+id int unsigned
+name varchar(255)
+username varchar(255)
+password varchar(60)
+-- comments
+RENAME username users
+RENAME TABLE adil
