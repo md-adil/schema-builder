@@ -2,9 +2,9 @@
 
 namespace App;
 use App\Contracts\ColumnInterface;
+use App\Contracts\TableInterface;
 
 class Column implements ColumnInterface {
-	protected $id;
 	protected $name;
 	protected $type = 'varchar';
 	protected $size = 255;
@@ -12,12 +12,29 @@ class Column implements ColumnInterface {
 	protected $primaryKey = false;
 	protected $renamed = false;
 	protected $autoIncrement = false;
+	protected $position;
+	protected $comment;
 
 	public function __construct(string $defination = null)
 	{
 		if($defination) {
 			$this->parse($defination);
 		}
+	}
+
+	public function setPosition($position)
+	{
+		$this->position = $position;
+	}
+
+	public function getPosition()
+	{
+		return $this->position;
+	}
+
+	public function getTable()
+	{
+		return $this->table;
 	}
 
 	public function isPrimaryKey()
@@ -95,7 +112,7 @@ class Column implements ColumnInterface {
 	public function __sleep()
 	{
 		return [
-			'name', 'type'
+			'name', 'type', 'position'
 		];
 	}
 }

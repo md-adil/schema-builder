@@ -1,0 +1,12 @@
+TABLE NAME `migration`
+
+`id` int auto_increment primary key
+`payload` text
+`migration` varchar(255)
+`hash` varchar(32)
+`created_at` datetime
+
+-- CONSTRAINTS
+CONSTRAINT id_index_unique UNIQUE INDEX (`payload`, `id`) COMMENT "Hello World"
+CONSTRAINT id_index UNIQUE INDEX (`payload`, `id`) COMMENT "Hello World"
+CONSTRAINT FK_PersonOrder FOREIGN KEY (`PersonID`) REFERENCES Persons(`PersonID`) COMMENT "Hello World"
