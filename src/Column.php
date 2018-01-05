@@ -5,21 +5,70 @@ use App\Contracts\ColumnInterface;
 use App\Contracts\TableInterface;
 
 class Column implements ColumnInterface {
+	
 	protected $name;
-	protected $type = 'varchar';
-	protected $size = 255;
-	protected $nullable = true;
-	protected $primaryKey = false;
-	protected $renamed = false;
-	protected $autoIncrement = false;
+	protected $type;
+	protected $size;
 	protected $position;
-	protected $comment;
+	protected $renamed = false;
+	protected $deleted = false;
+	protected $modified = false;
+	protected $props = [];
 
 	public function __construct(string $defination = null)
 	{
 		if($defination) {
 			$this->parse($defination);
 		}
+	}
+
+	public function getType()
+	{
+		return $this->type;
+	}
+	public function getSize()
+	{
+		return $this->size;
+	}
+
+	public function isPrimaryKey()
+	{
+		if(isset($this->props['primary_key'])) {
+			return $this->props['primary_key'];
+		}
+	}
+
+	public function getComment()
+	{
+		if(isset($this->props['comment'])) {
+			return $this->props['comment'];
+		}
+	}
+	public function getDefault()
+	{
+		if(isset($this->props['default'])) {
+			return $this->props['default'];
+		}
+		return;
+	}
+	public function isDeleted()
+	{
+		return $this->deleted;
+	}
+
+	public function setDeleted()
+	{
+		$this->deleted = true;
+	}
+
+	public function isModified()
+	{
+		return $this->modified;
+	}
+
+	public function setModified()
+	{
+		$this->modified = true;
 	}
 
 	public function setPosition($position)
@@ -37,14 +86,11 @@ class Column implements ColumnInterface {
 		return $this->table;
 	}
 
-	public function isPrimaryKey()
-	{
-		return $this->primaryKey;
-	}
-
 	public function isAutoIncrement()
 	{
-		return $this->autoIncrement;
+		if(isset($this->props['auto_increment'])) {
+			return $this->props['auto_increment'];
+		}
 	}
 
 	public function isNullable()
@@ -59,25 +105,34 @@ class Column implements ColumnInterface {
 
 	public function parse($defination)
 	{
-		$args = explode(' ', $defination);
+		preg_match_all('/(\S+(?:\s+?)?\(.+?\)|\S+)/', $defination, $args);
+		if(!$args) return;
+		$args = $args[1];
 		if(isset($args[0])) {
 			$this->name = $args[0];
 			unset($args[0]);
 		}
 
 		if(isset($args[1])) {
-			$this->type = $args[1];
-			unset($args[0]);
+			list($key, $val) = $this->parseValue($args[1], 10);
+			$this->type = $key;
+			$this->size = $val;
+			unset($args[1]);
 		}
 
 		foreach($args as $arg) {
-			$arg = strtolower($arg);
-			if($arg === 'primary key') {
-				$this->primaryKey = true;
-			}
-			if($arg === 'auto_increment') {
-				$this->autoIncrement = true;
-			}
+			list($k, $v) = $this->parseValue($arg, true);
+			$this->props[strtolower($k)] = $v;
+		}
+	}
+
+	protected function parseValue($prop, $default)
+	{
+		preg_match("/(.+)\((.+)\)/", $prop, $matched);
+		if($matched) {
+			return [$matched[1], $matched[2]];
+		} else {
+			return [ $prop, $default ];
 		}
 	}
 
@@ -85,6 +140,7 @@ class Column implements ColumnInterface {
 	{
 		$this->name = $name;
 	}
+
 	public function getName()
 	{
 		return $this->name;
@@ -112,7 +168,7 @@ class Column implements ColumnInterface {
 	public function __sleep()
 	{
 		return [
-			'name', 'type', 'position'
+			'name', 'type', 'position', 'props'
 		];
 	}
 }

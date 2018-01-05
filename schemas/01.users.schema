@@ -1,8 +1,9 @@
-TABLE users
-id int unsigned
-name varchar(255)
-username varchar(255)
-password varchar(60)
+TABLE_NAME users
+id int UNSIGNED AUTO_INCREMENT PRIMARY_KEY UNISNGED COMMENT("This is Primary Key")
+name VARCHAR(255) 
+username VARCHAR(255)
+password VARCHAR(60)
+status TINYINT DEFAULT(1) COMMENT("Hello World This Is Adil")
+type ENUM('user', 'admin') DEFAULT('user')
 -- comments
 RENAME username users
-RENAME TABLE adil

@@ -9,10 +9,6 @@ class Constraint
 	protected $fields;
 	protected $comment;
 
-	public static $types = [
-		'Primary key', 'Unique', 'Key', 'FULLTEXT', 'SPATIAL', 'INDEX', 'UNIQUE INDEX', 'FOREIGN KEY'
-	];
-
 	public function setName(string $name)
 	{
 		$this->name = $name;

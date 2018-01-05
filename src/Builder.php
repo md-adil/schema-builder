@@ -8,10 +8,24 @@ class Builder
 	protected $driver;
 	protected $old = [];
 	protected $new = [];
+	protected $schemaName = 'schemas';
+	protected $isSchemaExists = false;
 
 	function __construct(DriverInterface $driver = null)
 	{
 		$this->driver = $driver;
+		if($driver) {
+			$this->isSchemaExists = $dirver->hasTable($this->schemaName);
+		}
+	}
+
+	public function getMigration()
+	{
+		if($this->driver->hasTable($this->schemaName)) {
+			return $this->driver->migration()->all();	
+		} else {
+			return [];
+		}
 	}
 
 	public function run()
@@ -43,7 +57,7 @@ class Builder
 
 	public function getNewSchems($tables)
 	{
-		return $this->driver->migrtionQuery()->whereNotIn('table', array_keys($tables))->get();
+		return $this->driver->migration()->exclude(array_keys($tables))->get();
 	}
 
 	public function getChangedSchema($tables)
@@ -51,7 +65,7 @@ class Builder
 		$changed = [];
 		$created = [];
 		foreach($tables as $table) {
-			$migration = $this->getMigrationByName($table->getName());
+			$migration = $this->driver->migration()->findByName($table->getName());
 			if(!$migration) {
 				$created[] = $table;
 				continue;
@@ -64,37 +78,18 @@ class Builder
 		return [ $created, $changed ];
 	}
 
-	public function getMigrationByName($tableName)
-	{
-		return $this->driver->getMigration()->condition(['table'=> $tableName])->first();
-	}
-
 	public function newTables()
 	{
 		$tables = [];
-		foreach($this->getFiles as $file) {
+		foreach(Schema::find(__DIR__) as $schema) {
 			$table = new Table();
-			$table->setHash($this->fileHash($file));
-			foreach($this->getLines($file) as $line) {
+			$table->setHash($schema->getHash());
+			foreach($schema->getLines() as $line) {
 				$table->parse($line);
 			}
 			$tables[$table->getName()] = $table; 
 		}
 		return $tables;
 	}
-
-	public function getFileHash()
-	{
-		return '';
-	}
-
-	public function getFiles()
-	{
-		return glob(__DIR__ . '/../schemas/*.schema');
-	}
-
-	public function getLines($file)
-	{
-		return explode(PHP_EOL, file_get_contents($file));
-	}
 }
+

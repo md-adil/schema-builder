@@ -4,46 +4,39 @@ use App\Contracts\ColumnInterface;
 use App\Contracts\TableInterface;
 
 class Table implements TableInterface {
+
 	protected $name;
+	protected $schemaName;
 	protected $columns = [];
 	protected $index = 0;
 	protected $hash;
 	protected $indexes;
 	protected $foreignKeys;
-	protected $currentPosition;
 
-	public function __construct(string $name = null, array $columns = [])
+	protected $currentPosition;
+	protected $isModified = false;
+	protected $isDeleted = false;
+
+	public function __construct(string $name = null)
 	{
 		$this->name = $name;
-		$this->columns = $columns;
 	}
 
-	protected function setHash($hash)
+	public function setHash(string $hash)
 	{
 		$this->hash = $hash;
 	}
 
+	protected function setSchemaName(string $name): void {
+		$this->schemaName = $name;
+	}
+
 	public function parse($line) {
-		if(strpos($line, 'TABLE NAME') === 0) {
+		if(strpos($line, '--') === 0) return;
+		if(strpos($line, 'TABLE_NAME') === 0) {
 			$this->name = trim(substr($line, 10));
 			return;
 		}
-
-		if(strpos($line, 'RENAME TABLE') === 0) {
-			$this->name = trim(substr($line, 12));
-			return;
-		}
-		
-		if(strpos($line, 'RENAME') === 0) {
-			list($old, $new) = array_map('trim', explode(' ', substr($line, 7)));
-			if($this->hasColumn($old)) {
-				$this->findColumn(trim($old))->setName(trim($new));
-			} else {
-				throw new \Exception("$old not found");
-			}
-			return;
-		}
-
 		$this->addColumn(new Column($line));
 	}
 
@@ -69,10 +62,6 @@ class Table implements TableInterface {
 		$this->columns[$this->currentPosition] = $column;
 	}
 
-	public function addIndex(IndexInterface $index) {
-		$this->indexes[$index->getName()] = $index;
-	}
-
 	public function hasColumn($name) {
 		return isset($this->columns[$name]);
 	}
@@ -80,14 +69,6 @@ class Table implements TableInterface {
 	public function findColumn($name)
 	{
 		return $this->columns[$name];
-	}
-
-	public function findColumnByIndex($index) {
-		foreach($this->columns as $column) {
-			if($column->getIndex() === $index) {
-				return $column;
-			}
-		}
 	}
 
 	public function compare(Table $table)
@@ -105,17 +86,16 @@ class Table implements TableInterface {
 			unset($removed[$key]);
 			unset($added[$key]);
 		}
+		foreach($removed as $column) {
+			$column->setModified();
+			$this->columns[] = $column;
+		}
 		return compact('added', 'removed', 'modified');
 	}
 
 	public function addConstraint(ConstraintInterface $contraint)
 	{
 		$this->constraint = $contraint;
-	}
-
-	public function getLastColumn()
-	{
-		return end($this->columns);
 	}
 
 	public function __sleep()
