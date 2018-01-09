@@ -1,6 +1,6 @@
 <?php
-
-namespace App\Drivers;
+namespace App\Drivers\MySQL;
+use PDO;
 /**
  * Class Mysql
  * @author yourname
@@ -9,10 +9,15 @@ class DB
 {
 
 	protected $db;
-	protected $migrationName = 'migrations';
-	public function __construct($host, $username, $password)
+	public function __construct($host, $username = null, $password = null)
 	{
+		if(is_array($host)) {
+			$username = $host['username'];
+			$password = $host['password'];
+			$host = 'mysql:host=' . $host['host'] . ';dbname=' . $host['database'];
+		}
 		$this->db = new PDO($host, $username, $password);
+		$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	}
 
 	public function modifyTable(Table $table)
@@ -42,7 +47,7 @@ class DB
 			$query .= ' PRIMARY KEY';
 		}
 		if($default = $column->getDefault()) {
-			$query .= " DEFAULT {$default}";
+			$query .= " DEFAULT '{$default}'";
 		}
 
 		if($comment = $colum->getComment()) {
@@ -63,6 +68,41 @@ class DB
 		$this->db->query($query);
 	}
 
+	public function first($condition = [])
+	{
+		$conditions = $this->prepareCondition($condition);
+		$stmt = $this->db->prepase("SELECT * FROM ${$this->name} WHERE $conditions");
+		$stmt->execute($conditions);	
+		return $stmt->fetch(PDO::FETCH_OBJ);
+	}
+
+	protected function prepareCondition($conditions)
+	{
+		return implode(' AND ', 
+			array_map(function($a) {
+				return "`{$a}`=?";
+			}, array_keys($conditions))
+		);
+	}
+
+	public function prepareFields()
+	{
+		return implode(',', 
+			array_map(function($a) {
+				return "`{$a}`=?";
+			}, array_keys($conditions))
+		);
+	}
+
+	public function update($fields = [], $conditions = [])
+	{
+		$conditions = $this->prepareCondition($condition);
+		$fields = $this->prepareFields($fields);
+		$stmt = $this->db->query("UPDATE ${$this->name} SET {$fields} WHERE {$conditions}");
+		$stmt->execute(array_values($fields) + array_values($conditions));
+		return $this;
+	}
+
 	public function dropTable(Table $table)
 	{
 		$this->db->query("DROP TABLE `{$table->name()}`");
@@ -70,9 +110,9 @@ class DB
 
 	public function hasTable(string $tableName)
 	{
-		$stmt = $this->db->query("SHOW TABLES LIKE {$tableName}");
-		$stmt->fetch();
-		return !!$stmt;
+		$stmt = $this->db->query("SHOW TABLES LIKE '{$tableName}'");
+		$row = $stmt->fetch();
+		return !!$row;
 	}
 }
 

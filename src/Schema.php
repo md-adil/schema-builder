@@ -16,9 +16,9 @@ class Schema {
 		$this->setHash();
 	}
 
-	public function parseFileName()
+	public function parseFileName($info)
 	{
-	    $parts = explode('.', $this->filename);
+	    $parts = explode('.', $info['filename']);
 	    switch (count($parts)) {
 	    	case 1:
 	    		$this->filename = $parts[0];
@@ -46,6 +46,11 @@ class Schema {
 		return $this->hash;
 	}
 
+	public function getFileName()
+	{
+		return $this->filename;
+	}
+
 	public function getIndex()
 	{
 		return $this->index;
@@ -60,6 +65,7 @@ class Schema {
 	{
 		return explode(PHP_EOL, $this->getContents());
 	}
+
 	public static function find(string $path)
 	{
 		$files = [];
@@ -70,5 +76,4 @@ class Schema {
 		return $files;
 	} 
 }
-
 

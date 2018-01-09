@@ -31,6 +31,10 @@ class Table implements TableInterface {
 		$this->schemaName = $name;
 	}
 
+	protected function getSchemaName(string $name) {
+		return $this->schemaName;
+	}
+
 	public function parse($line) {
 		if(strpos($line, '--') === 0) return;
 		if(strpos($line, 'TABLE_NAME') === 0) {

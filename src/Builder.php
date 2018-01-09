@@ -18,6 +18,11 @@ class Builder
 			$this->isSchemaExists = $dirver->hasTable($this->schemaName);
 		}
 	}
+	
+	public function buildInstances()
+	{
+		$this->migration = new Migration($this->driver);
+	}
 
 	public function getMigration()
 	{
