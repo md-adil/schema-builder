@@ -1,34 +1,59 @@
 <?php
 namespace App\Drivers\MySQL;
 use PDO;
+use App\Contracts\DriverInterface;
+use App\Contracts\TableInterface;
+use App\Contracts\ColumnInterface;
 /**
  * Class Mysql
  * @author yourname
  */
-class DB
+class DB implements DriverInterface
 {
 
 	protected $db;
 	public function __construct($host, $username = null, $password = null)
 	{
-		if(is_array($host)) {
-			$username = $host['username'];
-			$password = $host['password'];
-			$host = 'mysql:host=' . $host['host'] . ';dbname=' . $host['database'];
+		if($host instanceOf PDO) {
+			$this->db = $host;
+		} else {
+			if(is_array($host)) {
+				$username = $host['username'];
+				$password = $host['password'];
+				$host = 'mysql:host=' . $host['host'] . ';dbname=' . $host['database'];
+			}
+			$this->db = new PDO($host, $username, $password);
+			$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		}
-		$this->db = new PDO($host, $username, $password);
-		$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	}
 
-	public function modifyTable(Table $table)
+	public function setPDO($pdo)
+	{
+		$this->db = $pdo;
+	}
+
+	/**
+	 * Tables create / update / delete
+	 */
+
+	public function modifyTable(TableInterface $table)
 	{
 		$tableName = $table->getName();
-		$query = "ALTER TABLE ${$tableName}";
+		$query = "ALTER TABLE `{$tableName}`";
 		$columns = [];
 		foreach($table->getColumns() as $column) {
-			$columns[] = $this->buildColumn();
+			$columns[] = $this->buildColumn($column);
 		}
 		$query .= implode(',', $columns);
+		$this->db->query($query);
+		return $this;
+	}
+
+	public function deleteTable(TableInterface $table)
+	{
+		$tableName = $table->getName();
+		$this->db->query("DROP TABLE `{$tableName}`");
+		return $this;
 	}
 
 	public function buildColumn(ColumnInterface $column)
@@ -38,7 +63,7 @@ class DB
 			$query .= "MODIFY " . $column->getName();
 		}
 
-		$query .= sprintf("%s(%s)", $column->getType(), $colum->getSize());
+		$query .= sprintf("%s(%s)", $column->getType(), $column->getSize());
 		if($column->isAutoIncrement()) {
 			$query .= ' AUTO_INCREMENT';
 		}
@@ -50,29 +75,30 @@ class DB
 			$query .= " DEFAULT '{$default}'";
 		}
 
-		if($comment = $colum->getComment()) {
+		if($comment = $column->getComment()) {
 			$query .= " COMMENT {$comment}";
 		}
 		
 		return $query;
 	}
 
-	public function createTable(Table $table)
+	public function createTable(TableInterface $table)
 	{
-		$query = "CREATE TABLE `{$table->name()}`";
+		$query = "CREATE TABLE `{$table->getName()}`";
 		$columns = [];
-		foreach($table->columns() as $colum) {
+		foreach($table->getColumns() as $column) {
 			$columns[] = $this->buildColumn($column);
 		}
 		$query .= "(" . implode(',', $columns) . ")";
 		$this->db->query($query);
+		return $this;
 	}
 
-	public function first($condition = [])
+	public function first($tableName, $condition = [])
 	{
 		$conditions = $this->prepareCondition($condition);
-		$stmt = $this->db->prepase("SELECT * FROM ${$this->name} WHERE $conditions");
-		$stmt->execute($conditions);	
+		$stmt = $this->db->prepare("SELECT * FROM ${tableName} WHERE $conditions");
+		$stmt->execute(array_values($condition));	
 		return $stmt->fetch(PDO::FETCH_OBJ);
 	}
 
@@ -85,7 +111,7 @@ class DB
 		);
 	}
 
-	public function prepareFields()
+	public function prepareFields($conditions)
 	{
 		return implode(',', 
 			array_map(function($a) {
@@ -94,23 +120,26 @@ class DB
 		);
 	}
 
-	public function update($fields = [], $conditions = [])
+	public function update($tableName, $field = [], $condition = [])
 	{
 		$conditions = $this->prepareCondition($condition);
-		$fields = $this->prepareFields($fields);
-		$stmt = $this->db->query("UPDATE ${$this->name} SET {$fields} WHERE {$conditions}");
-		$stmt->execute(array_values($fields) + array_values($conditions));
+		$fields = $this->prepareFields($field);
+		$stmt = $this->db->prepare("UPDATE `{$tableName}` SET {$fields} WHERE {$conditions}");
+		$values = array_merge(array_values($field), array_values($condition));
+		$stmt->execute($values);
 		return $this;
 	}
 
-	public function dropTable(Table $table)
+	public function dropTable(string $table)
 	{
-		$this->db->query("DROP TABLE `{$table->name()}`");
+		$this->db->query("DROP TABLE `{$table}`");
+		return $this;
 	}
 
 	public function hasTable(string $tableName)
 	{
-		$stmt = $this->db->query("SHOW TABLES LIKE '{$tableName}'");
+		$stmt = $this->db->prepare("SHOW TABLES LIKE ?");
+		$stmt->execute([$tableName]);
 		$row = $stmt->fetch();
 		return !!$row;
 	}

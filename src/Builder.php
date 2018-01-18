@@ -1,9 +1,11 @@
 <?php
 namespace App;
+use App\Contracts\BuilderInterface;
+use App\Contracts\DriverInterface;
 /**
 * 
 */
-class Builder
+class Builder implements BuilderInterface
 {
 	protected $driver;
 	protected $old = [];
@@ -15,7 +17,7 @@ class Builder
 	{
 		$this->driver = $driver;
 		if($driver) {
-			$this->isSchemaExists = $dirver->hasTable($this->schemaName);
+			$this->isSchemaExists = $driver->hasTable($this->schemaName);
 		}
 	}
 	
@@ -33,7 +35,7 @@ class Builder
 		}
 	}
 
-	public function run()
+	public function build()
 	{
 		$tables = $this->newTables();
 		list($created, $changed) = $this->getChangedSchema($tables);

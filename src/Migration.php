@@ -1,6 +1,6 @@
 <?php
 namespace App;
-use Adil\SchemaBuilder\Column;
+use App\Column;
 /**
  * Class Migration
  * @author yourname
@@ -20,7 +20,7 @@ class Migration
 
 	public function getSchema()
 	{
-		$table = new Table($this->name);
+		$table = new Table(static::NAME);
 		$table->addColumn(new Column('id INT AUTO_INCREMENT PRIMARY_KEY'));
 		$table->addColumn(new Column('name VARCHAR(100)'));
 		$table->addColumn(new Column('table_name VARCHAR(100)'));
