@@ -87,7 +87,8 @@ class DB implements DriverInterface
 		$query = "CREATE TABLE `{$table->getName()}`";
 		$columns = [];
 		foreach($table->getColumns() as $column) {
-			$columns[] = $this->buildColumn($column);
+			$name = $column->getName();
+			$columns[] = "`{$name}`" . $this->buildColumn($column);
 		}
 		$query .= "(" . implode(',', $columns) . ")";
 		$this->db->query($query);

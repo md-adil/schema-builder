@@ -126,13 +126,13 @@ class Column implements ColumnInterface {
 		}
 	}
 
-	protected function parseValue($prop, $default)
+	protected function parseValue($prop)
 	{
 		preg_match("/(.+)\((.+)\)/", $prop, $matched);
 		if($matched) {
 			return [$matched[1], $matched[2]];
 		} else {
-			return [ $prop, $default ];
+			return [ $prop, null ];
 		}
 	}
 
