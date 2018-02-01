@@ -3,6 +3,7 @@
 namespace App;
 use App\Contracts\ColumnInterface;
 use App\Contracts\TableInterface;
+use App\Utils\Action;
 
 class Column implements ColumnInterface {
 	
@@ -10,9 +11,8 @@ class Column implements ColumnInterface {
 	protected $type;
 	protected $size;
 	protected $position;
+	protected $action = Action::CREATED;
 	protected $renamed = false;
-	protected $deleted = false;
-	protected $modified = false;
 	protected $props = [];
 
 	public function __construct(string $defination = null)
@@ -30,12 +30,24 @@ class Column implements ColumnInterface {
 	{
 		return $this->size;
 	}
+	public function getAction()
+	{
+		return $this->action;
+	}
+
+	public function setAction($action)
+	{
+		$this->action = $action;
+	}
+
+	public function isCreated()
+	{
+		return $this->action === Action::CREATED;
+	}
 
 	public function isPrimaryKey()
 	{
-		if(isset($this->props['primary_key'])) {
-			return $this->props['primary_key'];
-		}
+		return key_exists('primary_key', $this->props);
 	}
 
 	public function getComment()
@@ -53,22 +65,23 @@ class Column implements ColumnInterface {
 	}
 	public function isDeleted()
 	{
-		return $this->deleted;
+		return $this->action === Action::DELETED;
 	}
 
 	public function setDeleted()
 	{
-		$this->deleted = true;
+		return $this->action = Action::DELETED;
 	}
 
-	public function isModified()
+	public function isModified() : bool
 	{
-		return $this->modified;
+		return $this->action == Action::MODIFIED;
 	}
 
 	public function setModified()
 	{
-		$this->modified = true;
+		$this->action = Action::MODIFIED;
+		return $this;
 	}
 
 	public function setPosition($position)
@@ -88,9 +101,7 @@ class Column implements ColumnInterface {
 
 	public function isAutoIncrement()
 	{
-		if(isset($this->props['auto_increment'])) {
-			return $this->props['auto_increment'];
-		}
+		return key_exists('auto_increment', $this->props);
 	}
 
 	public function isNullable()
@@ -114,14 +125,14 @@ class Column implements ColumnInterface {
 		}
 
 		if(isset($args[1])) {
-			list($key, $val) = $this->parseValue($args[1], 10);
+			list($key, $val) = $this->parseValue($args[1]);
 			$this->type = $key;
 			$this->size = $val;
 			unset($args[1]);
 		}
 
 		foreach($args as $arg) {
-			list($k, $v) = $this->parseValue($arg, true);
+			list($k, $v) = $this->parseValue($arg);
 			$this->props[strtolower($k)] = $v;
 		}
 	}
@@ -158,6 +169,9 @@ class Column implements ColumnInterface {
 			return true;
 		}
 		return false;
+		$this->setAction('modified');
+		$column->setAction('modified');
+		return false;
 	}
 
 	public function __wakeup()
@@ -172,3 +186,4 @@ class Column implements ColumnInterface {
 		];
 	}
 }
+

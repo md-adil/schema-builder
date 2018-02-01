@@ -39,10 +39,16 @@ class DB implements DriverInterface
 	public function modifyTable(TableInterface $table)
 	{
 		$tableName = $table->getName();
-		$query = "ALTER TABLE `{$tableName}`";
+		$query = "ALTER TABLE`{$tableName}`";
 		$columns = [];
 		foreach($table->getColumns() as $column) {
-			$columns[] = $this->buildColumn($column);
+			$colQuery =  $this->buildColumn($column);
+			if($column->isModified()) {
+				$columns[] = 'MODIFY ' . $colQuery;
+			}
+			if($column->isCreated()) {
+				$columns[] = 'ADD COLUMN' . $colQuery;
+			}
 		}
 		$query .= implode(',', $columns);
 		$this->db->query($query);
@@ -58,12 +64,13 @@ class DB implements DriverInterface
 
 	public function buildColumn(ColumnInterface $column)
 	{
-		$query = '';
-		if($column->isModified()) {
-			$query .= "MODIFY " . $column->getName();
+		$query = '`' . $column->getName() . '`'; 
+		$size = $column->getSize();
+		if($size) {
+			$query .= sprintf("%s(%s)", $column->getType(), $size);
+		} else {
+			$query .= $column->getType();
 		}
-
-		$query .= sprintf("%s(%s)", $column->getType(), $column->getSize());
 		if($column->isAutoIncrement()) {
 			$query .= ' AUTO_INCREMENT';
 		}
@@ -88,7 +95,7 @@ class DB implements DriverInterface
 		$columns = [];
 		foreach($table->getColumns() as $column) {
 			$name = $column->getName();
-			$columns[] = "`{$name}`" . $this->buildColumn($column);
+			$columns[] = $this->buildColumn($column);
 		}
 		$query .= "(" . implode(',', $columns) . ")";
 		$this->db->query($query);
@@ -143,6 +150,14 @@ class DB implements DriverInterface
 		$stmt->execute([$tableName]);
 		$row = $stmt->fetch();
 		return !!$row;
+	}
+
+	public function get($tableName, $condition = [], $columns = [])
+	{
+		$conditions = $this->prepareCondition($condition);
+		$stmt = $this->db->prepare("SELECT * FROM`{$tableName}`WHERE{$conditions}");
+		$stmt->execute(array_values($condition));
+		return $stmt->fetchAll(PDO::FETCH_OBJ);
 	}
 }
 

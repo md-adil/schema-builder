@@ -14,12 +14,26 @@ class Table implements TableInterface {
 	protected $foreignKeys;
 
 	protected $currentPosition;
-	protected $isModified = false;
-	protected $isDeleted = false;
+	protected $action = 'created';
 
 	public function __construct(string $name = null)
 	{
 		$this->name = $name;
+	}
+
+	public function isCreated()
+	{
+		return $this->action === 'created';
+	}
+
+	public function isDeleted()
+	{
+		return $this->action === 'deleted';
+	}
+
+	public function isModified(): bool
+	{
+		return (bool)$this->action === 'midified';
 	}
 
 	public function setHash(string $hash)
@@ -62,8 +76,11 @@ class Table implements TableInterface {
 	public function addColumn(ColumnInterface $column)
 	{
 		$column->setPosition($this->currentPosition ? 'AFTER ' . $this->currentPosition : 'FIRST');
+		$column->setIndex($this->index);
 		$this->currentPosition = $column->getName();
 		$this->columns[$this->currentPosition] = $column;
+		$this->index++;
+		return $this;
 	}
 
 	public function hasColumn($name) {
@@ -75,24 +92,29 @@ class Table implements TableInterface {
 		return $this->columns[$name];
 	}
 
+	public function findByIndex($index)
+	{
+		$keys = array_keys($this->columns);
+		return $this->columns[$keys[0]];
+	}
+
 	public function compare(Table $table)
 	{
-		$added = $this->columns;
-		$removed = $table->getColumns();
-		$modified = [];
-		foreach($added as $key => $column) {
-			if(!isset($removed[$key])) {
+		$columns = $table->getColumns();
+		foreach($this->getColumns() as $key => $column) {
+			if(!isset($columns[$key])) {
+				$column->setDeleted();
+				$this->addColumn($column);
 				continue;
 			}
-			if(!$removed[$key]->compare($column)) {
-				$modified[$key] = $column;
+			if(!$columns[$key]->compare($column)) {
+				$this->findColumn($key)->setModified();
 			}
-			unset($removed[$key]);
-			unset($added[$key]);
+			unset($columns[$key]);
 		}
-		foreach($removed as $column) {
-			$column->setModified();
-			$this->columns[] = $column;
+
+		foreach($columns as $column) {
+			$this->addColumn($column);
 		}
 		return compact('added', 'removed', 'modified');
 	}
